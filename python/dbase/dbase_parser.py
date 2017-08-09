@@ -43,6 +43,11 @@ dbase400_subtitle_sequence = Struct(
     "end_of_subtitle"       / Const(b"\x00\x00\xff\xff")
 )
 
+dbase100_opcode = Struct(
+    "value"                     / BytesInteger(3, False, True),
+    "command"                   / Int8ul
+)
+
 # FIXME: There counts only first DBASE400 entry, but they can be more
 # item_type:
 # 0x00 - generic
@@ -65,21 +70,16 @@ dbase100_inventory_entry = Struct(
     "closeup_image"             / Int32ul,      # animated image in inventory
     "inventory_image"           / Int32ul,      # image in inventory
     "offset_dbase400"           / Int32ul,
-    "add_length"                / Int16ul,
+    "opcodes_length"            / Int16ul,
     "unk_byte_04"               / Int8ul,       # always 0
     "unk_byte_05"               / Int8ul,
     "unk_dword_04"              / Int32ul,
-    "unk_bytes_01"              / Bytes(lambda ctx: ctx.add_length)
+    "opcodes"                   / If(lambda ctx: ctx.opcodes_length != 0, Array(lambda ctx: ctx.opcodes_length / 4, dbase100_opcode))
 )
 
 dbase100_inventory_offset = Struct(
     "offset"                    / Int32ul,
     "entry"                     / Pointer(lambda ctx: ctx.offset, dbase100_inventory_entry)
-)
-
-dbase100_opcode = Struct(
-    "value"                     / BytesInteger(3, False, True),
-    "command"                   / Int8ul
 )
 
 dbase100_action_entry = Struct(
