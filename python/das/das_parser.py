@@ -1,5 +1,5 @@
 import os
-import construct
+from construct import *
 import argparse
 from PIL import Image
 
@@ -10,7 +10,7 @@ from PIL import Image
 # and Sequences.
 # Most classes were redesigned and reimplemented. You should read the
 # documentation again.
-if 2 <= construct.version[0] and 8 > construct.version[1]:
+if 2 <= version[0] and 8 > version[1]:
     raise ValueError("Built for construct >= 2.8 only")
     
 g_pal = [
@@ -99,18 +99,18 @@ def createdir(dirname):
 # DAS filename & description
 #
 
-das_string_entry = construct.Struct(
-    "sizeof"                / construct.Int16ul,            # + 0x00        (sizeof (index) + len(name) + len(desc) + 2)
-    "index"                 / construct.Int16ul,            # + 0x02
-    "name"                  / construct.CString(),          # + 0x04
-    "desc"                  / construct.CString(),          # + 0xXX
+das_string_entry = Struct(
+    "sizeof"                / Int16ul,            # + 0x00        (sizeof (index) + len(name) + len(desc) + 2)
+    "index"                 / Int16ul,            # + 0x02
+    "name"                  / CString(),          # + 0x04
+    "desc"                  / CString(),          # + 0xXX
 )
 
-das_strings = construct.Struct(
-    "nb_unk_00"             / construct.Int16ul,                                                # + 0x00
-    "nb_unk_01"             / construct.Int16ul,                                                # + 0x02
-    "entries_00"            / construct.Array(lambda ctx: ctx.nb_unk_00, das_string_entry),     # + 0x04
-    "entries_01"            / construct.Array(lambda ctx: ctx.nb_unk_01, das_string_entry)
+das_strings = Struct(
+    "nb_unk_00"             / Int16ul,                                                # + 0x00
+    "nb_unk_01"             / Int16ul,                                                # + 0x02
+    "entries_00"            / Array(lambda ctx: ctx.nb_unk_00, das_string_entry),     # + 0x04
+    "entries_01"            / Array(lambda ctx: ctx.nb_unk_01, das_string_entry)
 )
 
 # cseg01:0004122F 80 7A 06 20                             cmp     byte ptr [edx+6], 20h ; ' '
@@ -119,77 +119,68 @@ das_strings = construct.Struct(
 # cseg01:00041239 74 D2                                   jz      short loc_4120D
 # cseg01:0004123B C7 05 2C C7 08 00 00 00+                mov     dword_8C72C, 0
 # cseg01:00041245 C7 05 0C C7 08 00 00 00+                mov     dword_8C70C, 0
-image_record = construct.Struct(
-    "offset_data"           / construct.Int32ul,            # + 0x00
-    "length_data_div_2"     / construct.Int16ul,            # + 0x04
-    "unk_byte_00"           / construct.Int8ul,             # + 0x06
-    "unk_byte_01"           / construct.Int8ul,             # + 0x07
+image_record = Struct(
+    "offset_data"           / Int32ul,            # + 0x00
+    "length_data_div_2"     / Int16ul,            # + 0x04
+    "unk_byte_00"           / Int8ul,             # + 0x06
+    "unk_byte_01"           / Int8ul,             # + 0x07
 )
 
-anim_das = construct.Struct(
-    "field_00"           / construct.Int32ul,               # + 0x00
-    "field_04"           / construct.Int16ul,               # + 0x04
-    "field_06"           / construct.Int16ul,               # + 0x06
-    "field_08"           / construct.Int8ul,                # + 0x08
-    "field_09"           / construct.Int8ul,                # + 0x09
-    "field_0A"           / construct.Int8ul,                # + 0x0A
-    "field_0B"           / construct.Int8ul,                # + 0x0B
-    #construct.Probe(),
+anim_das = Struct(
+    "field_00"           / Int32ul,               # + 0x00
+    "field_04"           / Int16ul,               # + 0x04
+    "field_06"           / Int16ul,               # + 0x06
+    "field_08"           / Int8ul,                # + 0x08
+    "field_09"           / Int8ul,                # + 0x09
+    "field_0A"           / Int8ul,                # + 0x0A
+    "field_0B"           / Int8ul,                # + 0x0B
+    #Probe(),
     # FUCKED DANS ADEMO
-    #"addr_delta"         / construct.If(lambda ctx: ctx.field_04 != 0, construct.Array(lambda ctx: (ctx.field_04 / 4) - 5, construct.Int32ul)),
-    construct.Int32ul,
-    construct.Int32ul,
+    #"addr_delta"         / If(lambda ctx: ctx.field_04 != 0, Array(lambda ctx: (ctx.field_04 / 4) - 5, Int32ul)),
+    Int32ul,
+    Int32ul,
 )
 
-unk_header = construct.Struct(
-    "unk_byte_00_f"         / construct.Int8ul,             # + 0x00
-    "unk_byte_01_f"         / construct.Int8ul,             # + 0x01
-    "width"                 / construct.Int16ul,            # + 0x02
-    "height"                / construct.Int16ul,            # + 0x04
-    "anim"                  / construct.If(lambda ctx: ctx.unk_byte_01_f & 0x01 != 0x00, anim_das),
-    "data"                  / construct.OnDemand(construct.Array(lambda ctx: ctx.width * ctx.height, construct.Byte))
+unk_header = Struct(
+    "unk_byte_00_f"         / Int8ul,             # + 0x00
+    "unk_byte_01_f"         / Int8ul,             # + 0x01
+    "width"                 / Int16ul,            # + 0x02
+    "height"                / Int16ul,            # + 0x04
+    "anim"                  / If(lambda ctx: ctx.unk_byte_01_f & 0x01 != 0x00, anim_das),
+    "data"                  / OnDemand(Array(lambda ctx: ctx.width * ctx.height, Byte))
 )
 
 #
 # DAS file
 #
-das_file = construct.Struct(
-    "signature"             / construct.Const("\x44\x41\x53\x50"),      # + 0x00
-    "version"               / construct.Int16ul,                        # + 0x04
-    "image_record_length"   / construct.Int16ul,                        # + 0x06
-    "image_record_offset"   / construct.Int32ul,                        # + 0x08
-    "palette_offset"        / construct.Int32ul,                        # + 0x0C
-    "ns_offset_01"          / construct.Int32ul,                        # + 0x10        // length = 0x1000
-    "string_table_offset"   / construct.Int32ul,                        # + 0x14
-    "string_table_length"   / construct.Int16ul,                        # + 0x18
-    "ns_length_02"          / construct.Int16ul,                        # + 0x1A
-    "ns_offset_02"          / construct.Int32ul,                        # + 0x1C
-    "field_20"              / construct.Int16ul,                        # + 0x20
-    "field_22"              / construct.Int16ul,                        # + 0x22
-    "ns_offset_03"          / construct.Int32ul,                        # + 0x24        // length = 0x800           || field_34 * 4 (ADEMO.DAS ?!)
-    "field_28"              / construct.Int32ul,                        # + 0x28        // length = field_2C
-    "field_2C"              / construct.Int32ul,                        # + 0x2C        // length field_28
-    "field_30"              / construct.Int32ul,                        # + 0x30
-    "field_34"              / construct.Int16ul,                        # + 0x34
-    "field_36"              / construct.Int16ul,                        # + 0x36
-    "field_38"              / construct.Int32ul,                        # + 0x38        // length = field_3C
-    "field_3C"              / construct.Int16ul,                        # + 0x3C        // length field_38
-    "field_3E"              / construct.Int16ul,                        # + 0x3E        // length field_40
-    "field_40"              / construct.Int32ul,                        # + 0x40        // length = field_3E
-
-
-
-
-
-
-
-
-
-    "palette"               / construct.OnDemandPointer(lambda ctx: ctx.palette_offset, construct.String(0x300)),
+das_file = Struct(
+    "signature"             / Const("\x44\x41\x53\x50"),      # + 0x00
+    "version"               / Int16ul,                        # + 0x04
+    "image_record_length"   / Int16ul,                        # + 0x06
+    "image_record_offset"   / Int32ul,                        # + 0x08
+    "palette_offset"        / Int32ul,                        # + 0x0C        // if 0, this is ADEMO.DAS
+    "ns_offset_01"          / Int32ul,                        # + 0x10        // length = 0x1000
+    "string_table_offset"   / Int32ul,                        # + 0x14
+    "string_table_length"   / Int16ul,                        # + 0x18
+    "ns_length_02"          / Int16ul,                        # + 0x1A
+    "ns_offset_02"          / Int32ul,                        # + 0x1C
+    "field_20"              / Int16ul,                        # + 0x20
+    "field_22"              / Int16ul,                        # + 0x22
+    "ns_offset_03"          / Int32ul,                        # + 0x24        // length = 0x800           || field_34 * 4 (ADEMO.DAS ?!)
+    "field_28"              / Int32ul,                        # + 0x28        // length = field_2C
+    "field_2C"              / Int32ul,                        # + 0x2C        // length field_28
+    "field_30"              / Int32ul,                        # + 0x30
+    "field_34"              / Int16ul,                        # + 0x34
+    "field_36"              / Int16ul,                        # + 0x36
+    "field_38"              / Int32ul,                        # + 0x38        // length = field_3C
+    "field_3C"              / Int16ul,                        # + 0x3C        // length field_38
+    "field_3E"              / Int16ul,                        # + 0x3E        // length field_40
+    "field_40"              / Int32ul,                        # + 0x40        // length = field_3E
+    "palette"               / Pointer(lambda ctx: ctx.palette_offset, String(0x300)),
         # 0x300 + 0x02 + 0x4000 + 0x10000 + 0x100 + 0x100
-    "strings"               / construct.OnDemandPointer(lambda ctx: ctx.string_table_offset, das_strings),
-    "images"                / construct.OnDemandPointer(lambda ctx: ctx.image_record_offset, 
-                                construct.Array(lambda ctx: ctx.image_record_length / 0x08, image_record)),
+    "strings"               / Pointer(lambda ctx: ctx.string_table_offset, das_strings),
+    "images"                / Pointer(lambda ctx: ctx.image_record_offset,
+                                Array(lambda ctx: ctx.image_record_length / 0x08, image_record)),
 )
 
 class DAS:
@@ -200,7 +191,7 @@ class DAS:
     def get_palette(self):
         if self.das_file.palette_offset != 0x00:
             # palette components is a 6-bit VGA
-            pal_0 = self.das_file.palette()
+            pal_0 = self.das_file.palette
             palette = []
             for i in xrange(0, len(pal_0), 3):
                 # scale
@@ -240,7 +231,7 @@ if __name__ == '__main__':
     nb = 0
     #print das.das_file.strings()
     str = das.das_file.strings()
-    imgs = das.das_file.images()
+    imgs = das.das_file.images
     for s in str.entries_00 + str.entries_01:
         print s
         continue
