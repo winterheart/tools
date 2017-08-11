@@ -176,7 +176,7 @@ das_file = Struct(
     "field_3C"              / Int16ul,                        # + 0x3C        // length field_38
     "field_3E"              / Int16ul,                        # + 0x3E        // length field_40
     "field_40"              / Int32ul,                        # + 0x40        // length = field_3E
-    "palette"               / Pointer(lambda ctx: ctx.palette_offset, String(0x300)),
+    "palette"               / If(lambda ctx: ctx.palette_offset != 0, Pointer(lambda ctx: ctx.palette_offset, String(0x300))),
         # 0x300 + 0x02 + 0x4000 + 0x10000 + 0x100 + 0x100
     "strings"               / Pointer(lambda ctx: ctx.string_table_offset, das_strings),
     "images"                / Pointer(lambda ctx: ctx.image_record_offset,
